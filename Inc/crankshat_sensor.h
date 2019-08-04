@@ -16,5 +16,7 @@
 #define CRANK_SYNK_PULS_COUNT 15
 
 void strat_crank_capture();
+uint32_t get_current_rpm ();
+
 
 #endif /* INC_CRANKSHAT_SENSOR_H_ */

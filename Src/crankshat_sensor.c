@@ -1,6 +1,7 @@
-#include "crankshat_sensor.h"
 #include "stm32f1xx_hal.h"
 #include "tim.h"
+
+#include "crankshat_sensor.h"
 
 uint16_t pulsStart = 0;
 uint16_t pulsEnd = 0;
@@ -14,6 +15,10 @@ uint8_t syncCout = 0;
 uint16_t angle = 0;
 uint16_t crankError = 0;
 
+/* RPM value */
+uint32_t rpmVal = 0;
+
+
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
   if (htim->Instance==TIM2) {
     overCout ++;
@@ -21,7 +26,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
       angle++;
       if (angle == 10) {
 	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_SET);
-      } else if (angle == 15) {
+	  //rpmVal = meanPulsWidth;
+      } else if (angle > 15) {
 	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_RESET);
       }
   }
@@ -39,20 +45,23 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
       period = pulsEnd + (65535 * overCout) - pulsStart;
       if (isSync == CRANK_SYNC_YES) {
 	if (period < (meanPulsWidth * 2)) {
+	  /* Debug only */
+	  meanPulsWidth = (meanPulsWidth + period) / 2;
 	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_RESET);
-          __HAL_TIM_SET_AUTORELOAD(&htim3, (uint16_t)period / FRQ_MUL_FACTOR);
-          __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, (uint16_t)period / (FRQ_MUL_FACTOR * 2));
+	  rpmVal = meanPulsWidth;
+          __HAL_TIM_SET_AUTORELOAD(&htim3, (uint16_t)meanPulsWidth / FRQ_MUL_FACTOR);
+          __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, (uint16_t)meanPulsWidth / (FRQ_MUL_FACTOR * 2));
           __HAL_TIM_SET_COUNTER(&htim3, 0);
           crankError = 0;
         } else {
 	  if (crankError == 1) {
 	    isSync = CRANK_SYNC_NO;
+	    /* Debug only */
 	    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_SET);
 	  }
 	  crankError = 1;
 	  angle = 0;
         }
-	meanPulsWidth = (meanPulsWidth + period) / 2;
       } else {
 	if (meanPulsWidth == 0) {
 	  meanPulsWidth = period;
@@ -71,6 +80,10 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
     }
 
   }
+}
+
+uint32_t get_current_rpm () {
+  return rpmVal;
 }
 
 void strat_crank_capture() {

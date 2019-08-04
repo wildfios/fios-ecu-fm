@@ -36,12 +36,13 @@
 #include "stm32f1xx_it.h"
 
 /* USER CODE BEGIN 0 */
-
+#include "pc_interface.h"
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
+extern TIM_HandleTypeDef htim7;
 extern UART_HandleTypeDef huart2;
 
 /******************************************************************************/
@@ -170,11 +171,11 @@ void SysTick_Handler(void)
 void TIM2_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM2_IRQn 0 */
-//////
+
   /* USER CODE END TIM2_IRQn 0 */
   HAL_TIM_IRQHandler(&htim2);
   /* USER CODE BEGIN TIM2_IRQn 1 */
-//////
+
   /* USER CODE END TIM2_IRQn 1 */
 }
 
@@ -200,10 +201,31 @@ void USART2_IRQHandler(void)
   /* USER CODE BEGIN USART2_IRQn 0 */
 
   /* USER CODE END USART2_IRQn 0 */
-  HAL_UART_IRQHandler(&huart2);
+  if (__HAL_UART_GET_FLAG(&huart2, UART_FLAG_RXNE)) {
+    __HAL_UART_CLEAR_FLAG(&huart2, UART_FLAG_RXNE);
+    on_byte_recived(USART2->DR);
+  } else if (__HAL_UART_GET_FLAG(&huart2, UART_FLAG_TXE)) {
+    __HAL_UART_CLEAR_FLAG(&huart2, UART_FLAG_TXE);
+    on_byte_transmitted();
+    //HAL_UART_IRQHandler(&huart2);
+  }
   /* USER CODE BEGIN USART2_IRQn 1 */
 
   /* USER CODE END USART2_IRQn 1 */
+}
+
+/**
+* @brief This function handles TIM7 global interrupt.
+*/
+void TIM7_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM7_IRQn 0 */
+  send_telemetry();
+  /* USER CODE END TIM7_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim7);
+  /* USER CODE BEGIN TIM7_IRQn 1 */
+
+  /* USER CODE END TIM7_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */
