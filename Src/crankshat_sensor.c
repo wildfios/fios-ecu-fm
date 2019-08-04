@@ -21,64 +21,95 @@ uint32_t rpmVal = 0;
 
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
   if (htim->Instance==TIM2) {
+    /*
+     * Tooth period timer overcount increment
+     * */
     overCout ++;
   } else if (htim->Instance==TIM3) {
+      /*
+       * Angle mesurment branch
+       * */
       angle++;
+
+      /*
+       * TODO: Add ignition here
+       * */
       if (angle == 10) {
 	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_SET);
-	  //rpmVal = meanPulsWidth;
       } else if (angle > 15) {
 	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_RESET);
       }
   }
 }
 
-void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
+
+/*
+ * Called each falling or rising age on crank sensor, calcs period in capture mode
+ *
+ * */
+void process_crank_pulse (TIM_HandleTypeDef *htim) {
   uint16_t period = 0;
 
-  if (htim->Instance==TIM2) {
-    if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1) {
-      pulsStart = __HAL_TIM_GetCompare(&htim2, TIM_CHANNEL_1);
-      overCout = 0;
-    } else {
-      pulsEnd = __HAL_TIM_GetCompare(&htim2, TIM_CHANNEL_2);
-      period = pulsEnd + (65535 * overCout) - pulsStart;
-      if (isSync == CRANK_SYNC_YES) {
+  if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1) {
+    pulsStart = __HAL_TIM_GetCompare(&htim2, TIM_CHANNEL_1); /* Rising age timer value */
+    overCout = 0;                                            /* Timer overcount since rising age */
+  } else {
+    pulsEnd = __HAL_TIM_GetCompare(&htim2, TIM_CHANNEL_2);   /* Falling age timer value for mesuring period */
+    period = pulsEnd + (65535 * overCout) - pulsStart;       /* Period of tooth interval */
+    /* ----==== Crank is synced ====---- */
+    if (isSync == CRANK_SYNC_YES) {
+	/* ---- Normal pulse width, less then two pulse length ---- */
 	if (period < (meanPulsWidth * 2)) {
-	  /* Debug only */
 	  meanPulsWidth = (meanPulsWidth + period) / 2;
-	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_RESET);
-	  rpmVal = meanPulsWidth;
-          __HAL_TIM_SET_AUTORELOAD(&htim3, (uint16_t)meanPulsWidth / FRQ_MUL_FACTOR);
-          __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, (uint16_t)meanPulsWidth / (FRQ_MUL_FACTOR * 2));
-          __HAL_TIM_SET_COUNTER(&htim3, 0);
-          crankError = 0;
-        } else {
-	  if (crankError == 1) {
-	    isSync = CRANK_SYNC_NO;
-	    /* Debug only */
-	    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_SET);
-	  }
-	  crankError = 1;
-	  angle = 0;
-        }
+	  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_RESET);    /* CHECK turn off */
+	  rpmVal = meanPulsWidth;                                  /* Storing RPM value for dashboard */
+        __HAL_TIM_SET_AUTORELOAD(&htim3, (uint16_t)meanPulsWidth / FRQ_MUL_FACTOR);                    /* Multimplied period for tooth counter */
+        __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, (uint16_t)meanPulsWidth / (FRQ_MUL_FACTOR * 2));  /* Multiplied pulse PWM output. Testing prepose only */
+        __HAL_TIM_SET_COUNTER(&htim3, 0);        /* Null the counter */
+        crankError = 0; /*  */
+      /* ---- Pulse lenght too long REPPER POINT CHECK---- */
       } else {
-	if (meanPulsWidth == 0) {
-	  meanPulsWidth = period;
-	} else {
-	  /* Calc meen value of crank sensor puls width */
-	    meanPulsWidth = (meanPulsWidth + period) / 2;
-	  if (syncCout == CRANK_SYNK_PULS_COUNT) {
-	    syncCout = 0;
-	    isSync = CRANK_SYNC_YES;
-	    crankError = 0;
-	  } else {
-	    syncCout++;
+        /* We have error in crank sync, interval is too long > 4 periods, lost sync */
+	  if (crankError == 1) {
+	    isSync = CRANK_SYNC_NO;                               /* Lost crank  */
+	    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_SET);   /* CHECK turn on */
 	  }
-	}
+	  /* +++ REPPER point reached +++ new crank sycle, no errors */
+	  crankError = 1;  /*  */
+	  angle = 0;       /* Null the crank angle */
+      }
+    /* ----==== Sync branch, lets count (exapmple) 64 tooth to start ignition ====----  */
+    } else {
+      /*  ---- Init puls width ---- */
+      if (meanPulsWidth == 0) {
+        meanPulsWidth = period;
+        /* ---- Erro in sync, reinit loop ---- */
+      } else {
+         /* Calc meen value of crank sensor puls width */
+         meanPulsWidth = (meanPulsWidth + period) / 2;
+         /*
+          * ----==== Check if REPPER is correct 64-2 teeth for example ====----
+          * Set sync ok flag, ready for ignition
+          *
+          * */
+	if (syncCout == CRANK_SYNK_PULS_COUNT) {
+	  syncCout = 0;
+	  /* REPPER point done, first crank cycle pass, set ok flag */
+	  isSync = CRANK_SYNC_YES;
+	  crankError = 0;
+	/*
+	 * No sync, wait the crank made one cycle
+	 * */
+	} else syncCout++;
       }
     }
+  }
+}
 
+
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
+  if (htim->Instance==TIM2) {
+    process_crank_pulse(htim);
   }
 }
 
