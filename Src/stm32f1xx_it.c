@@ -203,7 +203,7 @@ void USART2_IRQHandler(void)
   /* USER CODE END USART2_IRQn 0 */
   if (__HAL_UART_GET_FLAG(&huart2, UART_FLAG_RXNE)) {
     __HAL_UART_CLEAR_FLAG(&huart2, UART_FLAG_RXNE);
-    on_byte_recived(USART2->DR);
+    on_byte_recived();
   } else if (__HAL_UART_GET_FLAG(&huart2, UART_FLAG_TXE)) {
     __HAL_UART_CLEAR_FLAG(&huart2, UART_FLAG_TXE);
     on_byte_transmitted();

@@ -34,7 +34,7 @@ typedef struct {
 void init_telemetry();
 void send_telemetry();
 void on_byte_transmitted();
-void on_byte_recived(uint8_t);
+void on_byte_recived();
 void rcv_data_interrupt();
 void send_data(uint8_t*, uint16_t, transferCallBack);
 
