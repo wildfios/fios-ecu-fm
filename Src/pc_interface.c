@@ -28,6 +28,7 @@ uint8_t hiTetradeRx = UART_HI_TETRADE;
 
 uint8_t mapBuffer[300];
 
+#pragma pack(push, 1)
 typedef struct telemetryData {
 	uint8_t  packType;
   uint16_t rpmValue;
@@ -36,8 +37,20 @@ typedef struct telemetryData {
 	uint8_t  correctSync;
 } telemetryData_t;
 
-void on_data_recived(uint16_t);
+#pragma pack(push, 1)
+typedef struct mapHeader {
+	uint8_t  packType;
+  uint16_t xStart;
+	uint16_t xStep;
+  uint16_t yStart;
+	uint16_t yStep;
+	uint8_t  demention;
+	uint8_t  dementionY;
+  uint16_t address;
+} mapHeader_t;
 
+
+void on_data_recived(uint16_t);
 
 void on_byte_transmitted() {
 	if (txBusy == UART_TX_BSY_FREE) {
@@ -97,51 +110,35 @@ void on_data_transmitted() {
  * Recived data processing
  */
 void on_data_recived(uint16_t count) {
-	//if (rxBuffer[0] == 'M') {
-	  fm24_write_block(0x10, "test wr\n");//&rxBuffer + 2);
-	//} else { //if (rxBuffer[0] == 'M') {
-//		fm24_read_block(0x10, &arrayTx, 11);
-//		txBusy = UART_TX_BSY_BUSY;
-//		on_byte_transmitted();
-//	}
-//	decoded = indata[3:-1]
-//	fuelmap = list(decoded)
-//	ser.write('F')
+  mapHeader_t *header;
+  header = (mapHeader_t)&rxBuffer;
 
+	if (header->packType == 70) { /* Fetch map request */
+    /* Add here address of block */
+    fm24_read_block(header->address, txBuffer, 100);
+    while(txBusy == UART_TX_BSY_BUSY) {};
+    txBusy = UART_TX_BSY_BUSY;
+    on_byte_transmitted();
+  } else if (header->packType == 66) {
 
-
-
-//	if (recvHeader.packType == 'W') {
-//		/*
-//		 * Get bytes Count and Address
-//		 * Write to internal memory
-//		 *
-//		 * */
-//		/* Send resp */
-//	} else if (recvHeader.packType == 'R') {
-//		/*
-//		 * Get count of bytes to read
-//		 *
-//		 * */
-//		/* Send memory dump */
-//	}
-
-//	for (int i = 0; i < count; i++) {
-//		printf("0x%02x ", rxBuffer[i]);
-//	}
-//
-//	printf("\n\n === rx is done === \n\n");
+  }
+	//  fm24_write_block(0x10, "test wr\n");
 }
 
 void send_telemetry() {
-	if (txBusy != UART_TX_BSY_BUSY) {
-//		txBusy = UART_TX_BSY_BUSY;
-//		on_byte_transmitted();
-		//fm24_read_block(0x10, &arrayTx, 11);
-		txBusy = UART_TX_BSY_BUSY;
-		on_byte_transmitted();
-	}
+  telemetryData_t *data;
+	
+  if (txBusy != UART_TX_BSY_BUSY) {
+    txBusy = UART_TX_BSY_BUSY;
+    data = (telemetryData_t*)&serialized;
 
+    data->packType = 'S';
+    data->rpmValue = get_current_rpm();
+    data->engineLoad = 0x0000;
+    data->incorrectSync = get_incorect_sync();
+    data->correctSync = get_sync_value();
+    on_byte_transmitted();
+	}
 }
 
 void init_telemetry() {
@@ -149,46 +146,3 @@ void init_telemetry() {
 	__HAL_UART_ENABLE_IT(&huart1, UART_IT_TXE);
 	__HAL_UART_ENABLE_IT(&huart1, UART_IT_RXNE);
 }
-
-
-//	telemetryData.header = 0xA55A;
-//	telemetryData.load = 0xFF;
-//	telemetryData.temerature = 0xFF;
-//	telemetryData.rpm = get_current_rpm();
-//	telemetryData.cmdCode = CMD_TELEMETRY;
-//	telemetryData.signatre = 0xA55A;
-//	memcpy(txBuffer, &telemetryData, sizeof(telemetryData));
-//	send_data((uint8_t*) &telemetryData, sizeof(telemetry_st), NULL);
-
-
-///*
-// * Testing propose functions
-// *
-// * */
-//int main() {
-//	int j = 0;
-//
-//	txBusy = UART_TX_BSY_BUSY;
-//	while (txBusy == UART_TX_BSY_BUSY) {
-//		on_byte_transmitted();
-//	}
-//	printf(" === tx is done === \n\n");
-//
-//	while (rxEnFlag == 0) {
-//		rxByte = arrayRx[j++];
-//		on_byte_recived();
-//	}
-//
-//	return 0;
-//}
-//
-///*
-//
-// for (int i = 0; i < sizeof(arrayTx); i++) {
-// printf("0x%02x ", arrayTx[i]);
-// printf("0x%01x ", arrayTx[i] / 0x10 + 0x10);
-// printf("0x%01x\n", arrayTx[i] % 0x10 + 0x10);
-// }
-//
-// */
-
