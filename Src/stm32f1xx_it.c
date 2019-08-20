@@ -4,7 +4,7 @@
   * @brief   Interrupt Service Routines.
   ******************************************************************************
   *
-  * COPYRIGHT(c) 2018 STMicroelectronics
+  * COPYRIGHT(c) 2019 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -43,7 +43,7 @@
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim7;
-extern UART_HandleTypeDef huart2;
+extern UART_HandleTypeDef huart1;
 
 /******************************************************************************/
 /*            Cortex-M3 Processor Interruption and Exception Handlers         */ 
@@ -194,25 +194,26 @@ void TIM3_IRQHandler(void)
 }
 
 /**
-* @brief This function handles USART2 global interrupt.
+* @brief This function handles USART1 global interrupt.
 */
-void USART2_IRQHandler(void)
+void USART1_IRQHandler(void)
 {
   /* USER CODE BEGIN USART2_IRQn 0 */
 
   /* USER CODE END USART2_IRQn 0 */
-  if (__HAL_UART_GET_FLAG(&huart2, UART_FLAG_RXNE)) {
-    __HAL_UART_CLEAR_FLAG(&huart2, UART_FLAG_RXNE);
-    on_byte_recived();
-  } else if (__HAL_UART_GET_FLAG(&huart2, UART_FLAG_TXE)) {
-    __HAL_UART_CLEAR_FLAG(&huart2, UART_FLAG_TXE);
+  if (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_RXNE)) {
+    __HAL_UART_CLEAR_FLAG(&huart1, UART_FLAG_RXNE);
+  	on_byte_recived();
+  } else if (__HAL_UART_GET_FLAG(&huart1, UART_FLAG_TXE)) {
+    __HAL_UART_CLEAR_FLAG(&huart1, UART_FLAG_TXE);
     on_byte_transmitted();
-    //HAL_UART_IRQHandler(&huart2);
+    //HAL_UART_IRQHandler(&huart1);
   }
   /* USER CODE BEGIN USART2_IRQn 1 */
 
   /* USER CODE END USART2_IRQn 1 */
 }
+
 
 /**
 * @brief This function handles TIM7 global interrupt.

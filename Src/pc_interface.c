@@ -5,6 +5,7 @@
 #include "usart.h"
 #include "gpio.h"
 
+#include "fm24mem.h"
 #include "pc_interface.h"
 #include "crankshat_sensor.h"
 
@@ -15,33 +16,26 @@
 #define UART_TX_BSY_FREE 1
 #define UART_TX_BSY_BUSY 0
 
-uint8_t arrayTx[] = { 0xA2, 0x52, 0xAF, 0xFF, 0x42, 0x00 };
+uint8_t  arrayTx[1000] = { 0xA2, 0x52, 0xAF, 0xFF, 0x42, 0x00 };
 uint16_t txCounter = 0;
-uint8_t txBusy = UART_TX_BSY_FREE;
+uint8_t  txBusy    = UART_TX_BSY_FREE;
 
-uint8_t rxBuffer[64] = { 0 };
-uint16_t rxCounter = 0;
+uint8_t  rxBuffer[1000] = { 0 };
+uint16_t rxCounter    = 0;
 
 uint8_t hiTetradeTx = UART_HI_TETRADE;
 uint8_t hiTetradeRx = UART_HI_TETRADE;
 
+uint8_t mapBuffer[300];
+
 typedef struct dataPack {
-	uint8_t packType;
-	uint16_t address;
+	uint16_t angle;
 	uint16_t count;
 	uint16_t crc;
 } dataPack_t;
 
 void on_data_recived(uint16_t);
 
-/* Debug only */
-
-uint8_t rxEnFlag = 0;
-uint8_t rxByte = 0;
-uint8_t arrayRx[] = { 0x1a, 0x12, 0x15, 0x12, 0x1a, 0x1f, 0x1f, 0x1f, 0x14,
-		0x12, 0x00 };
-
-/* Debug only ends */
 
 void on_byte_transmitted() {
 	if (txBusy == UART_TX_BSY_FREE) {
@@ -52,24 +46,21 @@ void on_byte_transmitted() {
 	if (arrayTx[txCounter] != 0x00) {
 		if (hiTetradeTx) {
 			hiTetradeTx = UART_LO_TETRADE;
-			USART2->DR = arrayTx[txCounter] / 0x10 + 0x10;
+			USART1->DR = arrayTx[txCounter] / 0x10 + 0x10;
 		} else {
 			hiTetradeTx = UART_HI_TETRADE;
-			USART2->DR = arrayTx[txCounter] % 0x10 + 0x10;
+			USART1->DR = arrayTx[txCounter] % 0x10 + 0x10;
 			txCounter++;
 		}
 	} else {
 		txBusy = UART_TX_BSY_FREE;
 		txCounter = 0;
-		USART2->DR = '\n';
+		USART1->DR = '\n';
 	}
 }
 
 void on_byte_recived() {
-// if () {
-// return
-// }
-	uint8_t rxByte = USART2->DR;
+	uint8_t rxByte = USART1->DR;
 
 	if (rxByte == 0x0a) {
 		on_data_recived(rxCounter);
@@ -78,7 +69,7 @@ void on_byte_recived() {
 	}
 
 	if (hiTetradeRx) {
-		rxBuffer[rxCounter] = (rxByte - 0x10) * 0x10;
+		rxBuffer[rxCounter] = (rxByte - 0x10 * 10);
 		hiTetradeRx = UART_LO_TETRADE;
 	} else {
 		rxBuffer[rxCounter] += rxByte - 0x10;
@@ -104,7 +95,19 @@ void on_data_transmitted() {
  * Recived data processing
  */
 void on_data_recived(uint16_t count) {
-	dataPack_t *recvHeader = (dataPack_t*) &rxBuffer;
+	//if (rxBuffer[0] == 'M') {
+	  fm24_write_block(0x10, "test wr\n");//&rxBuffer + 2);
+	//} else { //if (rxBuffer[0] == 'M') {
+//		fm24_read_block(0x10, &arrayTx, 11);
+//		txBusy = UART_TX_BSY_BUSY;
+//		on_byte_transmitted();
+//	}
+//	decoded = indata[3:-1]
+//	fuelmap = list(decoded)
+//	ser.write('F')
+
+
+
 
 //	if (recvHeader.packType == 'W') {
 //		/*
@@ -130,9 +133,21 @@ void on_data_recived(uint16_t count) {
 
 void send_telemetry() {
 	if (txBusy != UART_TX_BSY_BUSY) {
+//		txBusy = UART_TX_BSY_BUSY;
+//		on_byte_transmitted();
+		//fm24_read_block(0x10, &arrayTx, 11);
 		txBusy = UART_TX_BSY_BUSY;
 		on_byte_transmitted();
 	}
+
+}
+
+void init_telemetry() {
+	HAL_TIM_Base_Start_IT(&htim7);
+	__HAL_UART_ENABLE_IT(&huart1, UART_IT_TXE);
+	__HAL_UART_ENABLE_IT(&huart1, UART_IT_RXNE);
+}
+
 
 //	telemetryData.header = 0xA55A;
 //	telemetryData.load = 0xFF;
@@ -142,13 +157,6 @@ void send_telemetry() {
 //	telemetryData.signatre = 0xA55A;
 //	memcpy(txBuffer, &telemetryData, sizeof(telemetryData));
 //	send_data((uint8_t*) &telemetryData, sizeof(telemetry_st), NULL);
-}
-
-void init_telemetry() {
-	HAL_TIM_Base_Start_IT(&htim7);
-	__HAL_UART_ENABLE_IT(&huart2, UART_IT_TXE);
-	__HAL_UART_ENABLE_IT(&huart2, UART_IT_RXNE);
-}
 
 
 ///*

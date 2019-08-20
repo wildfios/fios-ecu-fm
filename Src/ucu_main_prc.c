@@ -22,7 +22,7 @@
 
 void ecu_start_main_loop () {
   uint8_t data[] = "-------------------";
-  uint8_t src[] = "HELLO BMW ECU ";
+  uint8_t src[] = "fios BMW ECU ";
 
   fm24_write_block(0x10, &src);
   fm24_read_block(0x10, &data, strlen(data));
