@@ -28,11 +28,13 @@ uint8_t hiTetradeRx = UART_HI_TETRADE;
 
 uint8_t mapBuffer[300];
 
-typedef struct dataPack {
-	uint16_t angle;
-	uint16_t count;
-	uint16_t crc;
-} dataPack_t;
+typedef struct telemetryData {
+	uint8_t  packType;
+  uint16_t rpmValue;
+	uint16_t engineLoad;
+	uint8_t  incorrectSync;
+	uint8_t  correctSync;
+} telemetryData_t;
 
 void on_data_recived(uint16_t);
 
