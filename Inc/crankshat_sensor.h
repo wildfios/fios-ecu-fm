@@ -8,12 +8,12 @@
 #ifndef INC_CRANKSHAT_SENSOR_H_
 #define INC_CRANKSHAT_SENSOR_H_
 
-#define FRQ_MUL_FACTOR 10
+#define FRQ_MUL_FACTOR 12
 
 #define CRANK_SYNC_YES 1
 #define CRANK_SYNC_NO 0
 
-#define CRANK_SYNK_PULS_COUNT 58 / 2
+#define CRANK_SYNK_PULS_COUNT 60 / 2 - 2
 
 #define ODD_PULSE 0
 #define EVEN_PULSE 1

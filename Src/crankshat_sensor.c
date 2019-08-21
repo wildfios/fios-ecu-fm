@@ -20,20 +20,26 @@ uint8_t currentSyncValue = 0;
 uint16_t angle = 0;
 int32_t  rpmVal = 0;
 
-uint16_t oldPulsWidth = 0;
+/* Testing Todo: check this */
+uint32_t pulseBuffer[3] = {0}; 
 
 /*
  * TODO: Add ignition here
  *
  * */
 void multimled_frq_tick_hnd() {
-  toothIntervalCount ++; /* Estimated pulse counter */
-	
+  toothIntervalCount ++;
+
+  if (isSync == CRANK_SYNC_NO) { 
+    return 0
+  }
+
   if (angle < 5) {
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_SET);
   } else if (angle > 5) {
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_RESET);
   }
+  
   angle++;
 }
 
@@ -45,11 +51,10 @@ void set_multipled_frq(uint16_t pulsWidth) {
   __HAL_TIM_SET_COUNTER(&htim3, 0);                /* Null the counter */
 }
 
-void analyze_crank_period(uint32_t period) {
+void analyze_crank_period_old(uint32_t period) {
   syncCout++;
 
   if (toothIntervalCount > (FRQ_MUL_FACTOR * 2)) {
-//  if (period > oldPulsWidth * 2) {
     if (syncCout != 28) {
       incorrectSyncValue = toothIntervalCount;
       currentSyncValue = 0;
@@ -64,28 +69,48 @@ void analyze_crank_period(uint32_t period) {
     syncCout = 0;
     angle = 0;
   }
-//  else {
-//    set_multipled_frq(period);
-//    if (oldPulsWidth == 0)
-//    	oldPulsWidth = period;
-//    oldPulsWidth = period;
-//  }
 
   set_multipled_frq(period);
   toothIntervalCount = 0;
 }
 
+void analyze_crank_period(uint32_t period) {
+  syncCout++;
+  pulseBuffer[0] = pulseBuffer[1];
+  pulseBuffer[1] = pulseBuffer[2];
+  pulseBuffer[2] = period;
+
+  /* detector of missing tooth /-\_/-\_/--\______/-\_/-\_/-\ */
+  if ((pulseBuffer[0] * 1.8) < pulseBuffer[1] > (pulseBuffer[2] * 1.8)) {
+    if (syncCout != CRANK_SYNK_PULS_COUNT) {
+      incorrectSyncValue = syncCout;
+      currentSyncValue = 0;
+      isSync = CRANK_SYNC_NO;
+      HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_SET);   /* CHECK turn on */
+    } else {
+    	currentSyncValue = syncCout;
+      incorrectSyncValue = 0;
+      isSync = CRANK_SYNC_YES;
+      HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_RESET); /* CHECK turn off */
+    }
+    syncCout = 0;
+    angle = 0;
+  } else {
+    rpmVal = period;
+    set_multipled_frq(period);
+  }
+}
+
 void process_crank_pulse() {
   uint32_t period = 0;
 
-  if (oddPulsFront == ODD_PULSE) {  //htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1) {
-    pulsStart = __HAL_TIM_GetCompare(&htim2, TIM_CHANNEL_1);     /* Rising age timer value */
+  if (oddPulsFront == ODD_PULSE) {  //htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1) txBusy
+    pulsStart = __HAL_TIM_GetCompare(&htim2, TIM_CHANNEL_2);     /* Rising age titxBusyer value */
     overCout = 0;
     oddPulsFront = EVEN_PULSE;
   } else {
-    pulsEnd = __HAL_TIM_GetCompare(&htim2, TIM_CHANNEL_1);       /* Falling age timer value for mesuring period */
+    pulsEnd = __HAL_TIM_GetCompare(&htim2, TIM_CHANNEL_2);       /* Falling age timer value for mesuring period */
     period = pulsEnd + (MAX_TIMER_VALUE * overCout) - pulsStart; /* Period of tooth interval */
-    rpmVal = period;
     oddPulsFront = ODD_PULSE;
     analyze_crank_period(period);
   }
@@ -109,7 +134,8 @@ void strat_crank_capture() {
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   HAL_TIM_Base_Start_IT(&htim3);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);   // Test output only
-  HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1); // HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_2);
+  // HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1); 
+  HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_2);
 }
 
 /*  ==== Hardware interrupts ==== */

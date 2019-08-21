@@ -18,6 +18,7 @@
 
 uint8_t  txBuffer[1000] = { 0xA2, 0x52, 0xAF, 0xFF, 0x42, 0x00 };
 uint16_t txCounter = 0;
+uint16_t txSize = 0;
 uint8_t  txBusy    = UART_TX_BSY_FREE;
 
 uint8_t  rxBuffer[1000] = { 0 };
@@ -107,6 +108,12 @@ void on_data_transmitted() {
 
 }
 
+void send_data(uint16_t size) {
+  txCounter = size;
+  txBusy = UART_TX_BSY_BUSY;
+  on_byte_transmitted();
+}
+
 /*
  * Recived data processing
  */
@@ -131,16 +138,14 @@ void send_telemetry() {
   telemetryData_t *data;
 
   if (txBusy != UART_TX_BSY_BUSY) {
-    txBusy = UART_TX_BSY_BUSY;
     data = (telemetryData_t*)&txBuffer;
-
     data->packType = 'S';
     data->rpmValue = get_current_rpm();
     data->engineLoad = 0x0000;
     data->incorrectSync = get_incorect_sync();
     data->correctSync = get_sync_value();
     data->endSing = 0x0a;
-    on_byte_transmitted();
+    send_data();
 	}
 }
 
