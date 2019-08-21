@@ -108,11 +108,11 @@ void on_data_transmitted() {
 
 }
 
-void send_data(uint16_t size) {
-  txCounter = size;
-  txBusy = UART_TX_BSY_BUSY;
-  on_byte_transmitted();
-}
+//void send_data(uint16_t size) {
+//  txCounter = size;
+//  txBusy = UART_TX_BSY_BUSY;
+//  on_byte_transmitted();
+//}
 
 /*
  * Recived data processing
@@ -145,7 +145,9 @@ void send_telemetry() {
     data->incorrectSync = get_incorect_sync();
     data->correctSync = get_sync_value();
     data->endSing = 0x0a;
-    send_data();
+    //  txCounter = size;
+      txBusy = UART_TX_BSY_BUSY;
+      on_byte_transmitted();
 	}
 }
 
