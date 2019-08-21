@@ -8,7 +8,7 @@
 #ifndef INC_CRANKSHAT_SENSOR_H_
 #define INC_CRANKSHAT_SENSOR_H_
 
-#define FRQ_MUL_FACTOR 2
+#define FRQ_MUL_FACTOR 10
 
 #define CRANK_SYNC_YES 1
 #define CRANK_SYNC_NO 0

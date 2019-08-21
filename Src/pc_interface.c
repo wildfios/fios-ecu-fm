@@ -16,7 +16,7 @@
 #define UART_TX_BSY_FREE 1
 #define UART_TX_BSY_BUSY 0
 
-uint8_t  arrayTx[1000] = { 0xA2, 0x52, 0xAF, 0xFF, 0x42, 0x00 };
+uint8_t  txBuffer[1000] = { 0xA2, 0x52, 0xAF, 0xFF, 0x42, 0x00 };
 uint16_t txCounter = 0;
 uint8_t  txBusy    = UART_TX_BSY_FREE;
 
@@ -35,6 +35,7 @@ typedef struct telemetryData {
 	uint16_t engineLoad;
 	uint8_t  incorrectSync;
 	uint8_t  correctSync;
+	uint8_t  endSing;
 } telemetryData_t;
 
 #pragma pack(push, 1)
@@ -58,13 +59,13 @@ void on_byte_transmitted() {
 		return;
 	}
 
-	if (arrayTx[txCounter] != 0x00) {
+	if (txBuffer[txCounter] != 0x0a) {
 		if (hiTetradeTx) {
 			hiTetradeTx = UART_LO_TETRADE;
-			USART1->DR = arrayTx[txCounter] / 0x10 + 0x10;
+			USART1->DR = txBuffer[txCounter] / 0x10 + 0x10;
 		} else {
 			hiTetradeTx = UART_HI_TETRADE;
-			USART1->DR = arrayTx[txCounter] % 0x10 + 0x10;
+			USART1->DR = txBuffer[txCounter] % 0x10 + 0x10;
 			txCounter++;
 		}
 	} else {
@@ -111,32 +112,34 @@ void on_data_transmitted() {
  */
 void on_data_recived(uint16_t count) {
   mapHeader_t *header;
-  header = (mapHeader_t)&rxBuffer;
 
-	if (header->packType == 70) { /* Fetch map request */
-    /* Add here address of block */
-    fm24_read_block(header->address, txBuffer, 100);
-    while(txBusy == UART_TX_BSY_BUSY) {};
-    txBusy = UART_TX_BSY_BUSY;
-    on_byte_transmitted();
-  } else if (header->packType == 66) {
+  header = (mapHeader_t*)&rxBuffer;
 
-  }
+//	if (header->packType == 70) { /* Fetch map request */
+//    /* Add here address of block */
+//    fm24_read_block(header->address, txBuffer, 100);
+//    while(txBusy == UART_TX_BSY_BUSY) {};
+//    txBusy = UART_TX_BSY_BUSY;
+//    on_byte_transmitted();
+//  } else {
+
+//  }
 	//  fm24_write_block(0x10, "test wr\n");
 }
 
 void send_telemetry() {
   telemetryData_t *data;
-	
+
   if (txBusy != UART_TX_BSY_BUSY) {
     txBusy = UART_TX_BSY_BUSY;
-    data = (telemetryData_t*)&serialized;
+    data = (telemetryData_t*)&txBuffer;
 
     data->packType = 'S';
     data->rpmValue = get_current_rpm();
     data->engineLoad = 0x0000;
     data->incorrectSync = get_incorect_sync();
     data->correctSync = get_sync_value();
+    data->endSing = 0x0a;
     on_byte_transmitted();
 	}
 }

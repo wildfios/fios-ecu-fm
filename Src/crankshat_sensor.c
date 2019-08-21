@@ -6,6 +6,7 @@
 uint16_t pulsStart = 0;
 uint16_t pulsEnd = 0;
 uint16_t overCout = 0;
+uint8_t  oddPulsFront = ODD_PULSE;
 
 /* Crankshaft sync */
 uint8_t isSync = CRANK_SYNC_NO;
@@ -17,8 +18,9 @@ uint8_t incorrectSyncValue = 0;
 uint8_t currentSyncValue = 0;
 
 uint16_t angle = 0;
-uint16_t crankError = 0;
 int32_t  rpmVal = 0;
+
+uint16_t oldPulsWidth = 0;
 
 /*
  * TODO: Add ignition here
@@ -27,9 +29,9 @@ int32_t  rpmVal = 0;
 void multimled_frq_tick_hnd() {
   toothIntervalCount ++; /* Estimated pulse counter */
 	
-  if (angle < 10) {
+  if (angle < 5) {
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_SET);
-  } else if (angle > 20) {
+  } else if (angle > 5) {
     HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_RESET);
   }
   angle++;
@@ -46,21 +48,30 @@ void set_multipled_frq(uint16_t pulsWidth) {
 void analyze_crank_period(uint32_t period) {
   syncCout++;
 
-  if (toothIntervalCount > FRQ_MUL_FACTOR * 2) {
-    if (syncCout < 30) {
-      incorrectSyncValue = syncCout;
+  if (toothIntervalCount > (FRQ_MUL_FACTOR * 2)) {
+//  if (period > oldPulsWidth * 2) {
+    if (syncCout != 28) {
+      incorrectSyncValue = toothIntervalCount;
+      currentSyncValue = 0;
       isSync = CRANK_SYNC_NO;
       HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_SET);   /* CHECK turn on */
     } else {
-      currentSyncValue = syncCout;
+    	currentSyncValue = syncCout;
+      incorrectSyncValue = 0;
       isSync = CRANK_SYNC_YES;
       HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_RESET); /* CHECK turn off */
     }
     syncCout = 0;
     angle = 0;
-  } else {
-    set_multipled_frq(period);
   }
+//  else {
+//    set_multipled_frq(period);
+//    if (oldPulsWidth == 0)
+//    	oldPulsWidth = period;
+//    oldPulsWidth = period;
+//  }
+
+  set_multipled_frq(period);
   toothIntervalCount = 0;
 }
 
@@ -74,6 +85,7 @@ void process_crank_pulse() {
   } else {
     pulsEnd = __HAL_TIM_GetCompare(&htim2, TIM_CHANNEL_1);       /* Falling age timer value for mesuring period */
     period = pulsEnd + (MAX_TIMER_VALUE * overCout) - pulsStart; /* Period of tooth interval */
+    rpmVal = period;
     oddPulsFront = ODD_PULSE;
     analyze_crank_period(period);
   }
@@ -82,7 +94,7 @@ void process_crank_pulse() {
 /* ==== Exported functions ==== */
 
 uint16_t get_current_rpm() {
-  return rpmVal != 0 ? 8000000 / rpmVal * 2 : 0;
+  return rpmVal; // != 0 ? 8000000 / rpmVal * 2 : 0;
 }
 
 uint8_t get_incorect_sync() {
