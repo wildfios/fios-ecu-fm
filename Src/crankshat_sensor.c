@@ -30,16 +30,20 @@ uint32_t pulseBuffer[3] = {0};
 void multimled_frq_tick_hnd() {
   toothIntervalCount ++;
 
-  if (isSync == CRANK_SYNC_NO) { 
-    return 0;
+  if (isSync == CRANK_SYNC_YES) {
+    if (angle < 5) {
+      HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_SET);
+    } else if (angle > 5) {
+      HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_RESET);
+    }
+  } else {
+    if (angle < 5) {
+      HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_SET);
+    } else if (angle > 5) {
+      HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_RESET);
+    }
   }
 
-  if (angle < 5) {
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_SET);
-  } else if (angle > 5) {
-    HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_RESET);
-  }
-  
   angle++;
 }
 
@@ -86,12 +90,10 @@ void analyze_crank_period(uint32_t period) {
       incorrectSyncValue = syncCout;
       currentSyncValue = 0;
       isSync = CRANK_SYNC_NO;
-      HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_SET);   /* CHECK turn on */
     } else {
     	currentSyncValue = syncCout;
       incorrectSyncValue = 0;
       isSync = CRANK_SYNC_YES;
-      HAL_GPIO_WritePin(GPIOC, GPIO_PIN_9, GPIO_PIN_RESET); /* CHECK turn off */
     }
     syncCout = 0;
     angle = 0;
