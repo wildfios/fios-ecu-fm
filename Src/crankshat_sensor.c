@@ -81,7 +81,7 @@ void analyze_crank_period(uint32_t period) {
   pulseBuffer[2] = period;
 
   /* detector of missing tooth /-\_/-\_/--\______/-\_/-\_/-\ */
-  if ((pulseBuffer[0] < pulseBuffer[1] * 0.8) && (pulseBuffer[1] * 0.8 > pulseBuffer[2])) {
+  if ((pulseBuffer[0] < pulseBuffer[1] * 0.7) && (pulseBuffer[1] * 0.7 > pulseBuffer[2])) {
     if (syncCout != CRANK_SYNK_PULS_COUNT) {
       incorrectSyncValue = syncCout;
       currentSyncValue = 0;
@@ -110,10 +110,7 @@ void process_crank_pulse() {
     oddPulsFront = EVEN_PULSE;
   } else {
     pulsEnd = __HAL_TIM_GetCompare(&htim2, TIM_CHANNEL_1);       /* Falling age timer value for mesuring period */
-    period = pulsEnd + (MAX_TIMER_VALUE * overCout) - pulsStart; /* Period of tooth interval */
-    if (period > 9000) {
-    	oddPulsFront = ODD_PULSE;
-    }
+    period = pulsEnd + (MAX_TIMER_VALUE * overCout) - pulsStart; /* Period of tooth interval *  * overCout */
     oddPulsFront = ODD_PULSE;
     analyze_crank_period(period);
   }
@@ -138,6 +135,7 @@ void strat_crank_capture() {
   HAL_TIM_Base_Start_IT(&htim3);
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);   // Test output only
   HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);
+  HAL_TIM_Base_Start_IT(&htim2);
   //HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_2);
 }
 
